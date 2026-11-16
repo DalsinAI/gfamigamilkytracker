@@ -119,3 +119,20 @@ index 9b84cfe..8c2f363 100644
  	BPath path;
  	find_directory(B_USER_SETTINGS_DIRECTORY, &path);
  	path.Append("MilkyTracker");
+diff --git a/src/tracker/sdl/SDL_Main.cpp b/src/tracker/sdl/SDL_Main.cpp
+index 48cca70..50a14c9 100644
+--- a/src/tracker/sdl/SDL_Main.cpp
++++ b/src/tracker/sdl/SDL_Main.cpp
+@@ -68,6 +68,12 @@
+ #include <errno.h>
+ 
+ #include <SDL.h>
++#ifdef __amigaos__
++/* The stove's SDL 2 headers leave read and close as macros; PPFont's
++   Bitstream::read and PPDisplayDevice::close are members, not those */
++#undef read
++#undef close
++#endif
+ #include "SDL_KeyTranslation.h"
+ #include <ModuleServices.h>
+ #include <ModuleEditor.h>
