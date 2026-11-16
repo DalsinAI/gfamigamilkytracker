@@ -1,0 +1,11 @@
+# What this port builds on: fetched at build time, never shipped.
+# MilkyTracker (GPL 3 or later) 1.05.01, master e3ceb05 (10 Sep 2026)
+MT_GIT=https://github.com/milkytracker/MilkyTracker.git
+MT_COMMIT=e3ceb05105e8c5bdc907d6451245bf5a1926b1f9
+MT_VERSION=1.05.01
+# Our own pieces, fetched at these commits
+# fpuauto (common/fpuauto): the FPU when there is one
+FPA_REPO=https://github.com/DalsinAI/amicradle-guest
+FPA_COMMIT=4a784c84b878fe0e9abade7006e67e1ded9b165c
+# SDL 2 is the stove's (GFOpenGPU's link stubs, lib/libSDL2.a); at run time
+# it is the GFOpenGPU part's SDL2.module

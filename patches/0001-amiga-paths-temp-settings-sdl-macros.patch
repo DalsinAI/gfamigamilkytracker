@@ -1,0 +1,139 @@
+diff --git a/src/ppui/osinterface/posix/PPPath_POSIX.cpp b/src/ppui/osinterface/posix/PPPath_POSIX.cpp
+index d5597bb..dd170ca 100644
+--- a/src/ppui/osinterface/posix/PPPath_POSIX.cpp
++++ b/src/ppui/osinterface/posix/PPPath_POSIX.cpp
+@@ -31,12 +31,32 @@
+ #include "PPPath_POSIX.h"
+ #include <sys/stat.h>
+ #include <limits.h>
++#include <string.h>
+ 
+ #ifdef __PSP__
+ // Needed for PATH_MAX
+ #include <sys/syslimits.h>
+ #endif
+ 
++#ifdef __amigaos__
++// AmigaDOS paths (Work:Music/): GFAmigaMilkyTracker's compat/amiga_path.c
++#include "amiga_path.h"
++
++static PPSystemString amiga_step(const PPSystemString& path, int how)
++{
++	char buf[1024];
++	strncpy(buf, path, sizeof(buf) - 2);
++	buf[sizeof(buf) - 2] = 0;
++	if (how == 0)
++		amiga_path_drawer(buf, sizeof(buf));
++	else if (how == 1)
++		amiga_path_parent(buf);
++	else
++		amiga_path_root(buf, sizeof(buf));
++	return PPSystemString(buf);
++}
++#endif
++
+ #ifdef PATH_MAX
+ #define PPMAX_DIR_PATH PATH_MAX
+ #else
+@@ -108,15 +128,23 @@ const PPSystemString PPPath_POSIX::getCurrent()
+ 
+ 	PPSystemString path(cwd);
+ 	
++#ifdef __amigaos__
++	return amiga_step(path, 0);
++#else
+ 	path.ensureTrailingCharacter(getPathSeparatorAsASCII());
+ 	return path;
++#endif
+ }
+ 	
+ bool PPPath_POSIX::change(const PPSystemString& path)
+ {
+ 	PPSystemString old = current;
++#ifdef __amigaos__
++	current = amiga_step(path, 0);
++#else
+ 	current = path;
+ 	current.ensureTrailingCharacter(getPathSeparatorAsASCII());
++#endif
+ 	bool res = updatePath();
+ 	if (res)
+ 		return true;
+@@ -184,7 +212,11 @@ bool PPPath_POSIX::canGotoRoot() const
+ 
+ void PPPath_POSIX::gotoRoot()
+ {
++#ifdef __amigaos__
++	change(amiga_step(current, 2));
++#else
+ 	change("/");
++#endif
+ 	updatePath();
+ }
+ 
+@@ -195,7 +227,11 @@ bool PPPath_POSIX::canGotoParent() const
+ 
+ void PPPath_POSIX::gotoParent()
+ {
++#ifdef __amigaos__
++	change(amiga_step(current, 1));
++#else
+ 	stepInto("..");
++#endif
+ }
+ 
+ char PPPath_POSIX::getPathSeparatorAsASCII() const
+diff --git a/src/ppui/osinterface/posix/PPSystem_POSIX.cpp b/src/ppui/osinterface/posix/PPSystem_POSIX.cpp
+index 9b84cfe..8c2f363 100644
+--- a/src/ppui/osinterface/posix/PPSystem_POSIX.cpp
++++ b/src/ppui/osinterface/posix/PPSystem_POSIX.cpp
+@@ -57,6 +57,12 @@ SYSCHAR System::buffer[PATH_MAX+1];
+ 
+ const SYSCHAR* System::getTempFileName()
+ {
++#ifdef __amigaos__
++	// T: is the Amiga's drawer for temporary files
++	static int n = 0;
++	snprintf(buffer, sizeof(buffer), "T:MilkyTracker.%d", n++);
++	return buffer;
++#else
+ 	// Suppressed warning: "'tmpnam' is deprecated: This function is provided for
+ 	// compatibility reasons only. Due to security concerns inherent in the
+ 	// design of tmpnam(3), it is highly recommended that you use mkstemp(3)
+@@ -82,11 +88,17 @@ const SYSCHAR* System::getTempFileName()
+ 			strcpy(buffer, "milkytracker_temp");
+ 	}
+ 	return buffer;
++#endif
+ }
+ 
+ const SYSCHAR* System::getConfigFileName()
+ {
+-#ifdef __HAIKU__
++#if defined(__amigaos__)
++	// the settings stay with the program, in PROGDIR:User/
++	mkdir("PROGDIR:User", S_IRWXU);
++	strncpy(buffer, "PROGDIR:User/MilkyTracker.config", PATH_MAX);
++	return buffer;
++#elif defined(__HAIKU__)
+ 	BPath path;
+ 	find_directory(B_USER_SETTINGS_DIRECTORY, &path);
+ 	path.Append("MilkyTracker");
+diff --git a/src/tracker/sdl/SDL_Main.cpp b/src/tracker/sdl/SDL_Main.cpp
+index 48cca70..6cfe8ee 100644
+--- a/src/tracker/sdl/SDL_Main.cpp
++++ b/src/tracker/sdl/SDL_Main.cpp
+@@ -56,6 +56,13 @@
+ #include "config.h"
+ #endif
+ 
++#ifdef __amigaos__
++/* The stove's pthread.h, once unistd.h is in, wraps read, close, sleep and
++   usleep as cancellation-point macros.  Taking pthread.h first (C++'s
++   <memory> pulls it in later) keeps them out: PPFont's Bitstream::read and
++   PPDisplayDevice::close are members, not the POSIX calls */
++#include <pthread.h>
++#endif
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
