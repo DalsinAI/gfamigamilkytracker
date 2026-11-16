@@ -7,13 +7,4 @@
 #ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* the full AmigaDOS name of an object that exists (NameFromLock) */
-char *amiga_realpath(const char *path, char *resolved);
-#ifdef __cplusplus
-}
-#endif
-#define realpath(p, r) amiga_realpath((p), (r))
 #endif
